@@ -17,7 +17,9 @@ pub fn fill(force_delay: bool) {
     println!("total images: {}", results.len());
     println!("missing thumb images: {}", missing_thumb_images.len());
     println!("missing full images: {}", missing_full_images.len());
-    println!("missing static images: {}", missing_static_images.len());
+    if let Some(missing_static_images) = &missing_static_images {
+        println!("missing static images: {}", missing_static_images.len());
+    }
     println!("missing all images file: {}", missing_all_images_file.len());
 
     lines_splitter();
@@ -36,14 +38,16 @@ pub fn fill(force_delay: bool) {
         force_sleep(force_delay);
     }
 
-    for (relative, image_path) in missing_static_images {
-        if exists(&image_path) { continue };
-        let image_url = relative_to_link(&relative);
-        if let Some(bytes) = download_image(&image_url) {
-            write_file(image_path, bytes);
-        }
+    if let Some(missing_static_images) = &missing_static_images {
+        for (relative, image_path) in missing_static_images {
+            if exists(&image_path) { continue };
+            let image_url = relative_to_link(&relative);
+            if let Some(bytes) = download_image(&image_url) {
+                write_file(image_path, bytes);
+            }
 
-        force_sleep(force_delay);
+            force_sleep(force_delay);
+        }
     }
 
     for relative in missing_all_images_file {

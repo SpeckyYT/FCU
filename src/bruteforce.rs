@@ -11,11 +11,13 @@ pub fn bruteforce(input: &str) {
     #[derive(Logos, Clone, Copy, Debug)]
     enum Token {
         #[token(r"\_")]
-        Alphanumeric,   // [0-9a-z_]
-        #[token(r"\d")]
-        Numeric,        // [0-9]
+        All,   // [0-9a-z_]
+        #[token(r"\x")]
+        AlphaNumeric,   // [a-z0-9]
         #[token(r"\a")]
         Alphabetic,     // [a-z]
+        #[token(r"\d")]
+        Numeric,        // [0-9]
         #[token(r"\m")]
         Mails,          // 0 -> 100 + 1000
         #[regex(r"\([^)]+\)")]
@@ -45,12 +47,13 @@ pub fn bruteforce(input: &str) {
                 };
             }
             match token {
-                Token::Text => new_output!(string.chars()),
+                Token::All => new_output!("abcdefghijklmnopqrstuvwxzy0123456789_".chars()),
+                Token::AlphaNumeric => new_output!("abcdefghijklmnopqrstuvwxzy0123456789".chars()),
                 Token::Alphabetic => new_output!("abcdefghijklmnopqrstuvwxzy".chars()),
-                Token::Alphanumeric => new_output!("abcdefghijklmnopqrstuvwxzy0123456789_".chars()),
                 Token::Numeric => new_output!("0123456789".chars()),
                 Token::Mails => new_output!((0..=100).chain(1000..=1000)),
                 Token::Specific => new_output!(string[1..string.len()-1].chars()),
+                Token::Text => new_output!(string.chars()),
             }
         }
 

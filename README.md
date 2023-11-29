@@ -11,7 +11,7 @@ Saves all of the images you have into a `all_images.txt` file
 ```sh
 fcu save 
 
-fcu         # this does the same as doing `fcu fill`
+fcu         # this does the same as doing `fcu save`
 ```
 
 ## Fill
@@ -40,12 +40,14 @@ fcu bruteforce 0/\a\a # will bruteforce all `0/[a-z][a-z]` images (will give 3 i
 
 ### Shortcuts
 
-- `\_`
-  - gets replaced with all combinations of  `[0-9a-z_]`
-- `\d`
-  - gets replaced with all combinations of `[0-9]`
 - `\a`
   - gets replaced with all combinations of `[a-z]`
+- `\d`
+  - gets replaced with all combinations of `[0-9]`
+- `\x`
+  - gets replaced with all combinations of `[a-z0-9]`
+- `\_`
+  - gets replaced with all combinations of  `[a-z0-9_]`
 - `\m`
   - gets replaced with `0, 1, 2, 3, ... 98, 99, 100, 1000` (useful for the "mail" portion)
 - `(abc)`

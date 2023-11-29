@@ -3,15 +3,45 @@ pub const IMAGES_URL: &str = "https://cdn-fapceo.nutaku.net//db/art/mail/";
 pub const ALL_IMAGES_FILE: &str = "all_images.txt";
 pub const THUMB: &str = "_thumb";
 pub const LINES_SPLITTER: &str = "====================";
-pub const VERSION: u8 = 171;
+pub const VERSION: u8 = 170;
 pub const SLEEP_MIN: f64 = 0.5;
 pub const SLEEP_DIFF: f64 = 0.5;
+pub const SLEEP_TOO_MANY_REQUESTS: f64 = 180.0;
+pub const ENABLE_PROXY: bool = cfg!(debug_assertions);
 
-use std::{path::{PathBuf, Path}, fs};
+lazy_static::lazy_static!(
+    /*
+    pub static ref PROXIES_IPS: Vec<(String, String)> = {
+        const PROXIES: &str = include_str!("../Free_Proxy_List.txt");
+        PROXIES.lines()
+            .skip(1)
+            .map(|line| {
+                let split = line.split(",").collect::<Vec<&str>>();
+                (split[0].trim_matches('"').to_string(), split[7].trim_matches('"').to_string())
+            })
+            .filter(|(_, b)| b.len() >= 3 && b.len() <= 5 && b.chars().all(|c| c.is_ascii_digit()))
+            .collect_vec()
+    };
+    */
+    pub static ref PROXIES_IPS: Vec<(String, String)> = {
+        if ENABLE_PROXY {
+            const PROXIES: &str = include_str!("../newer_proxies.txt");
+            PROXIES.lines().filter_map(|line| {
+                line.split_once(":").map(|(a,b)| (a.to_string(), b.to_string()))
+            }).collect_vec()
+        } else {
+            vec![]
+        }
+    };
+);
+
+use std::{path::{PathBuf, Path}, fs, time::Duration};
 use colored::Colorize;
 use folder::scan;
+use itertools::Itertools;
 use pathdiff::diff_paths;
 use lazy_static::lazy_static;
+use reqwest::StatusCode;
 
 lazy_static!{
     pub static ref MAIL_FOLDER: PathBuf = mail_folder();
@@ -80,18 +110,24 @@ pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>) ->
     (missing_full_images, missing_thumbs_images)
 }
 
-pub fn missing_static_images() -> Vec<(PathBuf, PathBuf)> {
-    let mail_folder = MAIL_FOLDER.clone();
+pub fn missing_static_images() -> Option<Vec<(PathBuf, PathBuf)>> {
+    match crate::images::IMAGES {
+        Some(static_images) => {
+            let mail_folder = MAIL_FOLDER.clone();
 
-    let mut missing_static_images = vec![];
+            let mut missing_static_images = vec![];
 
-    for file_relative in crate::images::IMAGES.lines() {
-        let relative = PathBuf::from(format!("{file_relative}_{VERSION}.png"));
-        let path = mail_folder.join(&relative);
-        if exists(&path) { continue }
-        missing_static_images.push((relative, path));
+            for file_relative in static_images.lines() {
+                let relative = PathBuf::from(format!("{file_relative}_{VERSION}.png"));
+                let path = mail_folder.join(&relative);
+                if exists(&path) { continue }
+                missing_static_images.push((relative, path));
+            }
+
+            Some(missing_static_images)
+        }
+        None => None,
     }
-    missing_static_images
 }
 
 pub fn missing_all_images_file() -> Vec<PathBuf> {
@@ -110,20 +146,47 @@ pub fn missing_all_images_file() -> Vec<PathBuf> {
     missing_all_images_file
 }
 
+pub fn random_proxy() -> reqwest::Proxy {
+    let proxy = &PROXIES_IPS[(rand::random::<f64>() * PROXIES_IPS.len() as f64).floor() as usize];
+    reqwest::Proxy::https(format!("http://{}:{}", proxy.0, proxy.1)).unwrap()
+} 
+
 pub fn download_image(url: &String) -> Option<Vec<u8>> {
     if url.contains("/0.png") { return None }
 
-    let output = reqwest::blocking::get(url);
-        
-    match output {
-        Ok(res) if res.status().is_success() => {
-            let bytes = res.bytes().unwrap().into_iter().collect::<Vec<u8>>();
-            println!("{} '{}'", "[SUCCESS]".green(), url.red());
-            Some(bytes)
+    loop {
+        let client = if ENABLE_PROXY {
+            reqwest::blocking::Client::builder().proxy(random_proxy())
+        } else {
+            reqwest::blocking::Client::builder()
         }
-        Ok(_)|Err(_) => {
-            println!("{} '{}'", "[FAILED]".red(), url.red());
-            None
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+        .build().unwrap();
+
+        let output = client.get(url).send();
+
+        match output {
+            Ok(res) if res.status().is_success() => {
+                let bytes = res.bytes().unwrap().into_iter().collect::<Vec<u8>>();
+                println!("{} '{}'", "[SUCCESS]".green(), url.red());
+                break Some(bytes)
+            },
+            Ok(res) => {
+                let code = match res.status() {
+                    StatusCode::TOO_MANY_REQUESTS => {
+                        println!("{} '{}'", "[TIMEOUT]".red(), url.red());
+                        std::thread::sleep(Duration::from_secs_f64(SLEEP_TOO_MANY_REQUESTS));
+                        continue
+                    },
+                    code => code,
+                };
+                println!("{} '{}' [{}]", "[FAILED]".red(), url.red(), code.as_u16());
+                break None
+            },
+            Err(err) => {
+                println!("{} '{}' [{}]", "[FAILED]".red(), url.red(), err);
+                continue
+            },
         }
     }
 }
