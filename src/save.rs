@@ -15,7 +15,7 @@ pub fn save() {
 }
 
 #[allow(dead_code)]
-pub fn push_string(content: &String) {
+pub fn push_string(content: &str) {
     let mut all_images = HashSet::new();
 
     read_from_file(&mut all_images);
@@ -49,9 +49,9 @@ pub fn read_from_mail_folder(all_images: &mut HashSet<String>) {
 
 pub fn stringify(all_images: &HashSet<String>) -> String {
     let mut all_images = all_images
-        .into_iter()
+        .iter()
         .filter_map(|s| {
-            let string = standardify(&s);
+            let string = standardify(s);
             if string.is_empty() {
                 None
             } else {
@@ -66,7 +66,7 @@ pub fn stringify(all_images: &HashSet<String>) -> String {
 }
 
 pub fn write(all_images: &HashSet<String>) {
-    std::fs::write(ALL_IMAGES_FILE, stringify(&all_images)).unwrap();
+    std::fs::write(ALL_IMAGES_FILE, stringify(all_images)).unwrap();
 }
 
 pub fn standardify(string: &str) -> String {

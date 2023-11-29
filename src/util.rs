@@ -27,7 +27,7 @@ lazy_static::lazy_static!(
         if ENABLE_PROXY {
             const PROXIES: &str = include_str!("../newer_proxies.txt");
             PROXIES.lines().filter_map(|line| {
-                line.split_once(":").map(|(a,b)| (a.to_string(), b.to_string()))
+                line.split_once(':').map(|(a,b)| (a.to_string(), b.to_string()))
             }).collect_vec()
         } else {
             vec![]
@@ -42,6 +42,8 @@ use itertools::Itertools;
 use pathdiff::diff_paths;
 use lazy_static::lazy_static;
 use reqwest::StatusCode;
+
+type PathPair = Vec<(PathBuf, PathBuf)>;
 
 lazy_static!{
     pub static ref MAIL_FOLDER: PathBuf = mail_folder();
@@ -66,7 +68,7 @@ pub fn get_all_images() -> Vec<(PathBuf, Result<bool, std::io::Error>)> {
     .collect()
 }
 
-pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>) -> (Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, PathBuf)>) {
+pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>) -> (PathPair, PathPair) {
     let mail_folder = MAIL_FOLDER.clone();
 
     let mut missing_full_images = vec![];
@@ -110,7 +112,7 @@ pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>) ->
     (missing_full_images, missing_thumbs_images)
 }
 
-pub fn missing_static_images() -> Option<Vec<(PathBuf, PathBuf)>> {
+pub fn missing_static_images() -> Option<PathPair> {
     match crate::images::IMAGES {
         Some(static_images) => {
             let mail_folder = MAIL_FOLDER.clone();

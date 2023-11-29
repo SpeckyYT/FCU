@@ -58,7 +58,7 @@ fn main() {
                 std::fs::read_to_string(file)
                     .unwrap()
                     .lines()
-                    .for_each(|v| bruteforce::bruteforce(v))
+                    .for_each(bruteforce::bruteforce)
             }
         },
         Some(Program::Transfer { full_folder, thumb_folder }) => {

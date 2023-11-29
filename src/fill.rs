@@ -40,8 +40,8 @@ pub fn fill(force_delay: bool) {
 
     if let Some(missing_static_images) = &missing_static_images {
         for (relative, image_path) in missing_static_images {
-            if exists(&image_path) { continue };
-            let image_url = relative_to_link(&relative);
+            if exists(image_path) { continue };
+            let image_url = relative_to_link(relative);
             if let Some(bytes) = download_image(&image_url) {
                 write_file(image_path, bytes);
             }
