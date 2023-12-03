@@ -107,7 +107,7 @@ pub fn missing_static_images(gay: bool) -> Option<PathPair> {
 
             let mut missing_static_images = vec![];
 
-            for file_relative in static_images.lines() {
+            for file_relative in (if gay { static_images.1 } else { static_images.0 }).lines() {
                 let relative = PathBuf::from(format!("{file_relative}_{VERSION}.png"));
                 let path = mail_folder.join(&relative);
                 if exists(&path) { continue }
