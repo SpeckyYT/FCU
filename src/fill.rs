@@ -1,16 +1,16 @@
 use crate::util::*;
 
-pub fn fill(force_delay: bool) {
-    let results = get_all_images();
+pub fn fill(force_delay: bool, gay: bool) {
+    let results = get_all_images(gay);
 
     let (
         missing_full_images,
         missing_thumb_images,
-    ) = missing_images(&results);
+    ) = missing_images(&results, gay);
 
-    let missing_static_images = missing_static_images();
+    let missing_static_images = missing_static_images(gay);
 
-    let missing_all_images_file = missing_all_images_file();
+    let missing_all_images_file = missing_all_images_file(gay);
 
     lines_splitter();
 
@@ -25,9 +25,9 @@ pub fn fill(force_delay: bool) {
     lines_splitter();
 
     for (_, (missing_image, _)) in missing_full_images.into_iter().chain(missing_thumb_images).enumerate() {
-        let image_url = relative_to_link(&missing_image);
+        let image_url = relative_to_link(&missing_image, gay);
 
-        let new_image_path = MAIL_FOLDER.join(missing_image);
+        let new_image_path = mail_folder(gay).join(missing_image);
         if exists(&new_image_path) { continue }
 
         let bytes = download_image(&image_url);
@@ -41,7 +41,7 @@ pub fn fill(force_delay: bool) {
     if let Some(missing_static_images) = &missing_static_images {
         for (relative, image_path) in missing_static_images {
             if exists(image_path) { continue };
-            let image_url = relative_to_link(relative);
+            let image_url = relative_to_link(relative, gay);
             if let Some(bytes) = download_image(&image_url) {
                 write_file(image_path, bytes);
             }
@@ -51,9 +51,9 @@ pub fn fill(force_delay: bool) {
     }
 
     for relative in missing_all_images_file {
-        let image_path = MAIL_FOLDER.join(&relative);
+        let image_path = mail_folder(gay).join(&relative);
         if exists(&image_path) { continue };
-        let image_url = relative_to_link(&relative);
+        let image_url = relative_to_link(&relative, gay);
         if let Some(bytes) = download_image(&image_url) {
             write_file(image_path, bytes);
         }
@@ -61,5 +61,5 @@ pub fn fill(force_delay: bool) {
         force_sleep(force_delay);
     }
 
-    crate::save::save();
+    crate::save::save(gay);
 }

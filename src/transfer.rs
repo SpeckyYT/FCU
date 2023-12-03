@@ -2,11 +2,11 @@ use crate::util::*;
 use std::{fs, path::PathBuf};
 use folder::scan;
 
-pub fn transfer(full_folder: Option<PathBuf>, thumb_folder: Option<PathBuf>) {
+pub fn transfer(full_folder: Option<PathBuf>, thumb_folder: Option<PathBuf>, gay: bool) {
     let scanner = |thumb: bool, folder: PathBuf| {
         fs::create_dir_all(&folder).unwrap();
         scan(
-            &MAIL_FOLDER.clone(),
+            &mail_folder(gay).clone(),
             |_| true,
             |path, _| Ok(path.exists() && path.metadata().unwrap().is_file()),
             (),

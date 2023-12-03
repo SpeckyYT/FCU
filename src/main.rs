@@ -17,6 +17,8 @@ struct Cli {
     /// Adds a random delay to each cdn request
     #[arg(long, short)]
     delay: bool,
+    #[arg(long, short)]
+    gay: bool,
 }
 
 #[derive(Subcommand)]
@@ -48,23 +50,23 @@ fn main() {
     let cli_parsed = Cli::parse();
 
     match cli_parsed.program {
-        None | Some(Program::Save) => save::save(),
-        Some(Program::Fill) => fill::fill(cli_parsed.delay),
+        None | Some(Program::Save) => save::save(cli_parsed.gay),
+        Some(Program::Fill) => fill::fill(cli_parsed.delay, cli_parsed.gay),
         Some(Program::Bruteforce { input, file }) => {
             if let Some(input) = input { 
-                bruteforce::bruteforce(&input)
+                bruteforce::bruteforce(&input, cli_parsed.gay)
             }
             if let Some(file) = file {
                 std::fs::read_to_string(file)
                     .unwrap()
                     .lines()
-                    .for_each(bruteforce::bruteforce)
+                    .for_each(|i| bruteforce::bruteforce(i, cli_parsed.gay))
             }
         },
         Some(Program::Transfer { full_folder, thumb_folder }) => {
-            transfer::transfer(full_folder, thumb_folder)
+            transfer::transfer(full_folder, thumb_folder, cli_parsed.gay)
         },
-        Some(Program::Stats) => stats::stats(),
+        Some(Program::Stats) => stats::stats(cli_parsed.gay),
     }
 }
 

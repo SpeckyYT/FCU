@@ -1,6 +1,9 @@
-pub const IMAGES_PATH: &str = "Boombox Games/Fap CEO/mail";
-pub const IMAGES_URL: &str = "https://cdn-fapceo.nutaku.net//db/art/mail/";
-pub const ALL_IMAGES_FILE: &str = "all_images.txt";
+pub const IMAGES_PATH: &str =       "Boombox Games/Fap CEO/mail";
+pub const IMAGES_PATH_GAY: &str =   "Boombox Games/Fap CEO_ Men Stream/mail";
+pub const IMAGES_URL: &str =        "https://cdn-fapceo.nutaku.net//db/art/mail/";
+pub const IMAGES_URL_GAY: &str =    "https://cdn-fapceo.nutaku.net/gayceo/db/art/mail/";
+pub const ALL_IMAGES_FILE: &str =   "all_images.txt";
+pub const ALL_GAY_IMAGES_FILE: &str = "all_gay_images.txt";
 pub const THUMB: &str = "_thumb";
 pub const LINES_SPLITTER: &str = "====================";
 pub const VERSION: u8 = 170;
@@ -10,19 +13,6 @@ pub const SLEEP_TOO_MANY_REQUESTS: f64 = 180.0;
 pub const ENABLE_PROXY: bool = cfg!(debug_assertions);
 
 lazy_static::lazy_static!(
-    /*
-    pub static ref PROXIES_IPS: Vec<(String, String)> = {
-        const PROXIES: &str = include_str!("../Free_Proxy_List.txt");
-        PROXIES.lines()
-            .skip(1)
-            .map(|line| {
-                let split = line.split(",").collect::<Vec<&str>>();
-                (split[0].trim_matches('"').to_string(), split[7].trim_matches('"').to_string())
-            })
-            .filter(|(_, b)| b.len() >= 3 && b.len() <= 5 && b.chars().all(|c| c.is_ascii_digit()))
-            .collect_vec()
-    };
-    */
     pub static ref PROXIES_IPS: Vec<(String, String)> = {
         if ENABLE_PROXY {
             const PROXIES: &str = include_str!("../newer_proxies.txt");
@@ -46,18 +36,16 @@ use reqwest::StatusCode;
 type PathPair = Vec<(PathBuf, PathBuf)>;
 
 lazy_static!{
-    pub static ref MAIL_FOLDER: PathBuf = mail_folder();
+    pub static ref ROAMING: PathBuf = PathBuf::from(std::env::var("APPDATA").unwrap());
+    pub static ref LOCAL_LOW: PathBuf = ROAMING.join("../LocalLow");
 }
 
-pub fn mail_folder() -> PathBuf {
-    let roaming = PathBuf::from(std::env::var("APPDATA").unwrap());
-    let local_low = roaming.join("../LocalLow");
-    
-    local_low.join(IMAGES_PATH)
+pub fn mail_folder(gay: bool) -> PathBuf {
+    LOCAL_LOW.join(if gay { IMAGES_PATH_GAY } else { IMAGES_PATH })
 }
 
-pub fn get_all_images() -> Vec<(PathBuf, Result<bool, std::io::Error>)> {
-    let mail_folder = MAIL_FOLDER.clone();
+pub fn get_all_images(gay: bool) -> Vec<(PathBuf, Result<bool, std::io::Error>)> {
+    let mail_folder = mail_folder(gay).clone();
     scan(
         mail_folder.clone(),
         |_| true,
@@ -68,8 +56,8 @@ pub fn get_all_images() -> Vec<(PathBuf, Result<bool, std::io::Error>)> {
     .collect()
 }
 
-pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>) -> (PathPair, PathPair) {
-    let mail_folder = MAIL_FOLDER.clone();
+pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>, gay: bool) -> (PathPair, PathPair) {
+    let mail_folder = mail_folder(gay).clone();
 
     let mut missing_full_images = vec![];
     let mut missing_thumbs_images = vec![];
@@ -112,10 +100,10 @@ pub fn missing_images(results: &Vec<(PathBuf, Result<bool, std::io::Error>)>) ->
     (missing_full_images, missing_thumbs_images)
 }
 
-pub fn missing_static_images() -> Option<PathPair> {
+pub fn missing_static_images(gay: bool) -> Option<PathPair> {
     match crate::images::IMAGES {
         Some(static_images) => {
-            let mail_folder = MAIL_FOLDER.clone();
+            let mail_folder = mail_folder(gay).clone();
 
             let mut missing_static_images = vec![];
 
@@ -132,15 +120,15 @@ pub fn missing_static_images() -> Option<PathPair> {
     }
 }
 
-pub fn missing_all_images_file() -> Vec<PathBuf> {
+pub fn missing_all_images_file(gay: bool) -> Vec<PathBuf> {
     let mut missing_all_images_file = vec![];
 
-    if let Ok(content) = fs::read_to_string(ALL_IMAGES_FILE) {
+    if let Ok(content) = fs::read_to_string(if gay { ALL_GAY_IMAGES_FILE } else { ALL_IMAGES_FILE }) {
         missing_all_images_file.append(
             &mut content
             .lines()
             .map(|s| PathBuf::from(format!("{s}_{VERSION}.png")))
-            .filter(|p| !exists(&MAIL_FOLDER.clone().join(p)))
+            .filter(|p| !exists(&mail_folder(gay).clone().join(p)))
             .collect()
         )
     }
@@ -249,7 +237,7 @@ pub fn relative_split(relative: &Path) -> Relative {
     }
 }
 
-pub fn relative_to_link(relative: &Path) -> String {
+pub fn relative_to_link(relative: &Path, gay: bool) -> String {
     let mut relative = relative.to_path_buf();
 
     let relative_split = relative_split(&relative);
@@ -257,7 +245,12 @@ pub fn relative_to_link(relative: &Path) -> String {
     relative.set_file_name(relative_split.stem);
     relative.set_extension(relative_split.extension);
 
-    format!("{}{}?v={}", IMAGES_URL, prettify(&relative), relative_split.version)
+    format!(
+        "{}{}?v={}",
+        if gay { IMAGES_URL_GAY } else { IMAGES_URL },
+        prettify(&relative),
+        relative_split.version,
+    )
 }
 
 pub fn exists(path: &Path) -> bool {

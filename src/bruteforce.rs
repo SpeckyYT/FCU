@@ -3,11 +3,9 @@ use std::{path::PathBuf, sync::{Mutex, Arc}, collections::HashSet};
 use colored::Colorize;
 use logos::Logos;
 use rayon::prelude::*;
-use lazy_static::lazy_static;
-
 
 // handy function for bruteforcing
-pub fn bruteforce(input: &str) {
+pub fn bruteforce(input: &str, gay: bool) {
     #[derive(Logos, Clone, Copy, Debug)]
     enum Token {
         #[token(r"\_")]
@@ -64,17 +62,15 @@ pub fn bruteforce(input: &str) {
     
     let all_combinations = recursive(lexed, String::new());
 
-    lazy_static!{
-        static ref ALL_IMAGES_STORED: Arc<Mutex<HashSet<String>>> = {
-            let mut all_images = HashSet::new();
-            crate::save::read_from_file(&mut all_images);
-            Arc::new(Mutex::new(all_images))
-        };
-    }
+    let all_images_stored: Arc<Mutex<HashSet<String>>> = {
+        let mut all_images = HashSet::new();
+        crate::save::read_from_file(&mut all_images, gay);
+        Arc::new(Mutex::new(all_images))
+    };
 
-    fn save_bruteforced() {
-        crate::save::write(&ALL_IMAGES_STORED.lock().unwrap())
-    }
+    let save_bruteforced = || {
+        crate::save::write(&all_images_stored.lock().unwrap(), gay)
+    };
 
     let images = all_combinations
         .into_par_iter()
@@ -82,7 +78,8 @@ pub fn bruteforce(input: &str) {
             (
                 download_image(
                     &relative_to_link(
-                        &PathBuf::from(format!("{current_string}_{VERSION}.png"))
+                        &PathBuf::from(format!("{current_string}_{VERSION}.png")),
+                        gay,
                     )
                 ),
                 current_string,
@@ -96,7 +93,7 @@ pub fn bruteforce(input: &str) {
             }
         })
         .map(|v| {
-            ALL_IMAGES_STORED.lock().unwrap().insert(v.1.clone());
+            all_images_stored.lock().unwrap().insert(v.1.clone());
             save_bruteforced();
             v
         })

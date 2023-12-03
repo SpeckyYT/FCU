@@ -3,14 +3,14 @@ use colored::Colorize;
 use folder::scan;
 use pretty_bytes::converter::convert;
 
-pub fn stats() {
+pub fn stats(gay: bool) {
     let mut fulls: u16 = 0;
     let mut fulls_bytes: u128 = 0;
     let mut thumbs: u16 = 0;
     let mut thumbs_bytes: u128 = 0;
     
     scan(
-        &MAIL_FOLDER.clone(),
+        &mail_folder(gay).clone(),
         |_| true,
         |path, _| Ok(path.exists() && path.metadata().unwrap().is_file()),
         (),
