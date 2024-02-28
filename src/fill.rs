@@ -1,6 +1,6 @@
 use crate::util::*;
 
-pub fn fill(force_delay: bool, gay: bool) {
+pub async fn fill(force_delay: bool, gay: bool) {
     let results = get_all_images(gay);
 
     let (
@@ -30,7 +30,7 @@ pub fn fill(force_delay: bool, gay: bool) {
         let new_image_path = mail_folder(gay).join(missing_image);
         if exists(&new_image_path) { continue }
 
-        let bytes = download_image(&image_url);
+        let bytes = download_image(image_url).await;
         if let Some(bytes) = bytes {
             write_file(new_image_path, bytes);
         }
@@ -42,7 +42,7 @@ pub fn fill(force_delay: bool, gay: bool) {
         for (relative, image_path) in missing_static_images {
             if exists(image_path) { continue };
             let image_url = relative_to_link(relative, gay);
-            if let Some(bytes) = download_image(&image_url) {
+            if let Some(bytes) = download_image(image_url).await {
                 write_file(image_path, bytes);
             }
 
@@ -54,7 +54,7 @@ pub fn fill(force_delay: bool, gay: bool) {
         let image_path = mail_folder(gay).join(&relative);
         if exists(&image_path) { continue };
         let image_url = relative_to_link(&relative, gay);
-        if let Some(bytes) = download_image(&image_url) {
+        if let Some(bytes) = download_image(image_url).await {
             write_file(image_path, bytes);
         }
 

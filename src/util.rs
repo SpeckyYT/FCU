@@ -1,16 +1,17 @@
 pub const IMAGES_PATH: &str =       "Boombox Games/Fap CEO/mail";
 pub const IMAGES_PATH_GAY: &str =   "Boombox Games/Fap CEO_ Men Stream/mail";
-pub const IMAGES_URL: &str =        "https://cdn-fapceo.nutaku.net//db/art/mail/";
+// pub const IMAGES_URL: &str =     "https://cdn-fapceo.nutaku.net//db/art/mail/";
+pub const IMAGES_URL: &str =        "https://1304815738.rsc.cdn77.org/db/art/mail/";
 pub const IMAGES_URL_GAY: &str =    "https://cdn-fapceo.nutaku.net/gayceo/db/art/mail/";
 pub const ALL_IMAGES_FILE: &str =   "all_images.txt";
 pub const ALL_GAY_IMAGES_FILE: &str = "all_gay_images.txt";
 pub const THUMB: &str = "_thumb";
 pub const LINES_SPLITTER: &str = "====================";
-pub const VERSION: u8 = 170;
+pub const VERSION: u8 = 169;
 pub const SLEEP_MIN: f64 = 0.5;
 pub const SLEEP_DIFF: f64 = 0.5;
 pub const SLEEP_TOO_MANY_REQUESTS: f64 = 180.0;
-pub const ENABLE_PROXY: bool = cfg!(debug_assertions);
+pub const ENABLE_PROXY: bool = false; // cfg!(debug_assertions);
 
 lazy_static::lazy_static!(
     pub static ref PROXIES_IPS: Vec<(String, String)> = {
@@ -32,6 +33,7 @@ use itertools::Itertools;
 use pathdiff::diff_paths;
 use lazy_static::lazy_static;
 use reqwest::StatusCode;
+use tokio::task;
 
 type PathPair = Vec<(PathBuf, PathBuf)>;
 
@@ -141,25 +143,32 @@ pub fn random_proxy() -> reqwest::Proxy {
     reqwest::Proxy::https(format!("http://{}:{}", proxy.0, proxy.1)).unwrap()
 } 
 
-pub fn download_image(url: &String) -> Option<Vec<u8>> {
+pub async fn download_image(url: String) -> Option<Vec<u8>> {
     if url.contains("/0.png") { return None }
 
     loop {
         let client = if ENABLE_PROXY {
-            reqwest::blocking::Client::builder().proxy(random_proxy())
+            reqwest::Client::builder().proxy(random_proxy())
         } else {
-            reqwest::blocking::Client::builder()
+            reqwest::Client::builder()
         }
+        .timeout(Duration::from_secs_f64(2.5))
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
-        .build().unwrap();
+        .build()
+        .unwrap();
 
-        let output = client.get(url).send();
+        let inner_url = url.clone();
+        let output = task::spawn(async move { client.get(&inner_url).send() }).await.unwrap().await;
 
         match output {
             Ok(res) if res.status().is_success() => {
-                let bytes = res.bytes().unwrap().into_iter().collect::<Vec<u8>>();
-                println!("{} '{}'", "[SUCCESS]".green(), url.red());
-                break Some(bytes)
+                // todo: remove the unwrap
+                let bytes = res.bytes().await;
+                if let Ok(bytes) = bytes {
+                    let bytes = bytes.into_iter().collect::<Vec<u8>>();
+                    println!("{} '{}'", "[SUCCESS]".green(), url.red());
+                    break Some(bytes)
+                }
             },
             Ok(res) => {
                 let code = match res.status() {

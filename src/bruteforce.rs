@@ -2,10 +2,14 @@ use crate::util::*;
 use std::{path::PathBuf, sync::{Mutex, Arc}, collections::HashSet};
 use colored::Colorize;
 use logos::Logos;
-use rayon::prelude::*;
+// use rayon::prelude::*;
+use futures::future::FutureExt; 
+use futures::stream::{self, StreamExt};
+
+const CONCURRENT_REQUESTS: usize = 128;
 
 // handy function for bruteforcing
-pub fn bruteforce(input: &str, gay: bool) {
+pub async fn bruteforce(input: &str, gay: bool) {
     #[derive(Logos, Clone, Copy, Debug)]
     enum Token {
         #[token(r"\_")]
@@ -68,39 +72,39 @@ pub fn bruteforce(input: &str, gay: bool) {
         Arc::new(Mutex::new(all_images))
     };
 
+    let all_images_found = Arc::new(Mutex::new(vec![]));
+
     let save_bruteforced = || {
         crate::save::write(&all_images_stored.lock().unwrap(), gay)
     };
 
-    let images = all_combinations
-        .into_par_iter()
-        .map(|current_string|
-            (
-                download_image(
-                    &relative_to_link(
-                        &PathBuf::from(format!("{current_string}_{VERSION}.png")),
-                        gay,
-                    )
-                ),
-                current_string,
-            )
-        )
-        .filter_map(|v| {
-            if let (Some(bytes), name) = v {
-                Some((bytes,name))
-            } else {
-                None
-            }
-        })
-        .map(|v| {
-            all_images_stored.lock().unwrap().insert(v.1.clone());
-            save_bruteforced();
-            v
-        })
-        .collect::<Vec<_>>();
+    let size = all_combinations.len();
+
+    stream::iter(all_combinations.into_iter().cycle().take(size))
+    .map(|current_string| {
+        let url = relative_to_link(
+            &PathBuf::from(format!("{current_string}_{VERSION}.png")),
+            gay,
+        );
+        download_image(url)
+        .map(|bytes| (bytes, current_string))
+    })
+    .buffer_unordered(CONCURRENT_REQUESTS)
+    .filter_map(|(bytes, current_string)| async {
+        match bytes {
+            Some(bytes) => Some((bytes, current_string)),
+            None => None,
+        }
+    })
+    .for_each(|(_bytes, current_string)| async {
+        all_images_stored.lock().unwrap().insert(current_string.clone());
+        all_images_found.lock().unwrap().push(current_string);
+        save_bruteforced();
+    })
+    .await;
 
     println!("{}", LINES_SPLITTER.magenta());
-    for (_, name) in images {
+    for name in all_images_found.lock().unwrap().iter() {
         println!("{}", name.green());
     }
     println!("{}", LINES_SPLITTER.magenta());
