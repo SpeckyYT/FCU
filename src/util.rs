@@ -37,9 +37,16 @@ use tokio::task;
 
 type PathPair = Vec<(PathBuf, PathBuf)>;
 
+#[cfg(target_os = "windows")]
 lazy_static!{
     pub static ref ROAMING: PathBuf = PathBuf::from(std::env::var("APPDATA").unwrap());
     pub static ref LOCAL_LOW: PathBuf = ROAMING.join("../LocalLow");
+}
+
+#[cfg(not(target_os = "windows"))]
+lazy_static!{
+    pub static ref ROAMING: PathBuf = PathBuf::from(".");
+    pub static ref LOCAL_LOW: PathBuf = ROAMING.join(".");
 }
 
 pub fn mail_folder(gay: bool) -> PathBuf {
