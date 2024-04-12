@@ -1,3 +1,5 @@
+use futures::{stream, StreamExt};
+
 use crate::util::*;
 
 pub async fn fill(force_delay: bool, gay: bool) {
@@ -24,19 +26,24 @@ pub async fn fill(force_delay: bool, gay: bool) {
 
     lines_splitter();
 
-    for (_, (missing_image, _)) in missing_full_images.into_iter().chain(missing_thumb_images).enumerate() {
+    stream::iter(missing_full_images.into_iter().chain(missing_thumb_images))
+    .map(|(missing_image,_)| async {
         let image_url = relative_to_link(&missing_image, gay);
 
         let new_image_path = mail_folder(gay).join(missing_image);
-        if exists(&new_image_path) { continue }
+        if exists(&new_image_path) { return }
 
         let bytes = download_image(image_url).await;
+
         if let Some(bytes) = bytes {
             write_file(new_image_path, bytes);
         }
 
         force_sleep(force_delay);
-    }
+    })
+    .buffer_unordered(CONCURRENT_REQUESTS)
+    .collect::<Vec<_>>()
+    .await;
 
     if let Some(missing_static_images) = &missing_static_images {
         for (relative, image_path) in missing_static_images {

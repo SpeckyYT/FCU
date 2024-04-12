@@ -6,20 +6,20 @@ use logos::Logos;
 use futures::future::FutureExt; 
 use futures::stream::{self, StreamExt};
 
-const CONCURRENT_REQUESTS: usize = 128;
-
 // handy function for bruteforcing
 pub async fn bruteforce(input: &str, gay: bool) {
     #[derive(Logos, Clone, Copy, Debug)]
     enum Token {
         #[token(r"\_")]
         All,   // [0-9a-z_]
-        #[token(r"\x")]
+        #[token(r"\b")]
         AlphaNumeric,   // [a-z0-9]
         #[token(r"\a")]
         Alphabetic,     // [a-z]
         #[token(r"\d")]
         Numeric,        // [0-9]
+        #[token(r"\x")]
+        Hexadecimal,   // [a-f0-9]
         #[token(r"\m")]
         Mails,          // 0 -> 100 + 1000
         #[regex(r"\([^)]+\)")]
@@ -53,6 +53,7 @@ pub async fn bruteforce(input: &str, gay: bool) {
                 Token::AlphaNumeric => new_output!("abcdefghijklmnopqrstuvwxzy0123456789".chars()),
                 Token::Alphabetic => new_output!("abcdefghijklmnopqrstuvwxzy".chars()),
                 Token::Numeric => new_output!("0123456789".chars()),
+                Token::Hexadecimal => new_output!("0123456789abcdef".chars()),
                 Token::Mails => new_output!((0..=100).chain(1000..=1000)),
                 Token::Specific => new_output!(string[1..string.len()-1].chars()),
                 Token::Text => new_output!(string.chars()),

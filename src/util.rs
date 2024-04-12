@@ -13,6 +13,8 @@ pub const SLEEP_DIFF: f64 = 0.5;
 pub const SLEEP_TOO_MANY_REQUESTS: f64 = 180.0;
 pub const ENABLE_PROXY: bool = false; // cfg!(debug_assertions);
 
+pub const CONCURRENT_REQUESTS: usize = 128;
+
 lazy_static::lazy_static!(
     pub static ref PROXIES_IPS: Vec<(String, String)> = {
         if ENABLE_PROXY {
@@ -186,7 +188,9 @@ pub async fn download_image(url: String) -> Option<Vec<u8>> {
                     },
                     code => code,
                 };
-                println!("{} '{}' [{}]", "[FAILED]".red(), url.red(), code.as_u16());
+                if code.as_u16() != 404 {
+                    println!("{} '{}' [{}]", "[FAILED]".red(), url.red(), code.as_u16());
+                }
                 break None
             },
             Err(err) => {
